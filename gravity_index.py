@@ -247,6 +247,56 @@ class GravityIndexAnalyzer:
         else:
             return 'Other'
     
+    def _get_bonus_description(self, data):
+        """Get a brief description highlighting strengths and potential gaps"""
+        strengths = []
+        gaps = []
+        
+        # Assess strengths
+        if data['incoming'] >= 100:
+            strengths.append("authoritative reference")
+        elif data['incoming'] >= 50:
+            strengths.append("widely referenced")
+        elif data['incoming'] >= 20:
+            strengths.append("solid authority")
+            
+        if data['outgoing'] >= 50:
+            strengths.append("extensive curator")
+        elif data['outgoing'] >= 25:
+            strengths.append("active synthesizer")
+        elif data['outgoing'] >= 15:
+            strengths.append("knowledge weaver")
+            
+        if data['bidirectional'] >= 20:
+            strengths.append("conversation hub")
+        elif data['bidirectional'] >= 10:
+            strengths.append("dialogue catalyst")
+            
+        if data['bidirectional_efficiency'] >= 0.4:
+            strengths.append("selective depth")
+        elif data['bidirectional_efficiency'] >= 0.25:
+            strengths.append("quality focus")
+            
+        # Assess potential gaps
+        if data['incoming'] < 10 and data['outgoing'] > 30:
+            gaps.append("under-recognized")
+        elif data['outgoing'] < 10 and data['incoming'] > 30:
+            gaps.append("could link more")
+        elif data['bidirectional'] < 5 and data['incoming'] > 20:
+            gaps.append("one-way traffic")
+            
+        # Build description
+        if strengths and gaps:
+            return f"{', '.join(strengths[:2])}; {gaps[0]}"
+        elif len(strengths) >= 2:
+            return f"{strengths[0]} + {strengths[1]}"
+        elif strengths:
+            return strengths[0]
+        elif data['integration_index'] > 10:
+            return "balanced integrator"
+        else:
+            return "emerging connector"
+    
     def generate_report(self, gravity_scores, top_n=50):
         """Generate formatted markdown report"""
         if not gravity_scores:
@@ -256,6 +306,29 @@ class GravityIndexAnalyzer:
             f"# 🌟 Gravity Index Results",
             f"",
             f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*",
+            f"",
+            f"## Top {min(top_n, len(gravity_scores))} Notes by Gravity Index",
+            f""
+        ]
+        
+        # Add top notes
+        for i, (note, data) in enumerate(list(gravity_scores.items())[:top_n]):
+            description = self._get_bonus_description(data)
+            report_lines.append(f"{i+1}. **[[{note}]]** - Score: {data['total']:.1f} - {description}")
+        
+        # Add summary statistics
+        total_notes = len([n for n, d in gravity_scores.items() if d['exists']])
+        avg_efficiency = sum(d['bidirectional_efficiency'] for d in gravity_scores.values()) / len(gravity_scores) * 100
+        top_score = list(gravity_scores.values())[0]['total']
+        
+        # Category analysis
+        categories = defaultdict(list)
+        for note, data in list(gravity_scores.items())[:top_n]:
+            categories[data['category']].append(data['total'])
+        
+        report_lines.extend([
+            f"",
+            f"---",
             f"",
             f"## Integration at Scale Methodology",
             f"",
@@ -281,41 +354,6 @@ class GravityIndexAnalyzer:
             f"- **Conversation Bonus (1.2x)**: 10+ bidirectional links",
             f"- **Quality Bonus (2.0x)**: 25%+ efficiency (bidirectional/incoming)",
             f"",
-            f"## Top {min(top_n, len(gravity_scores))} Notes by Gravity Index",
-            f""
-        ]
-        
-        # Add top notes
-        for i, (note, data) in enumerate(list(gravity_scores.items())[:top_n]):
-            eff_pct = data['bidirectional_efficiency'] * 100
-            
-            # Determine bonus indicators
-            bonuses = []
-            if data['scale_bonus'] > 1: bonuses.append('Scale')
-            if data['curation_bonus'] > 1: bonuses.append('Curation')
-            if data['conversation_bonus'] > 1: bonuses.append('Conversation')
-            if data['quality_bonus'] > 1: bonuses.append('Quality')
-            bonus_text = f" ({'+'.join(bonuses)})" if bonuses else ""
-            
-            report_lines.extend([
-                f"{i+1}. **[[{note}]]** - Score: {data['total']:.1f}{bonus_text}",
-                f"   - Raw: {data['incoming']}in, {data['outgoing']}out, {data['bidirectional']}bi, {eff_pct:.1f}%eff",
-                f"   - Category: {data['category']} | Integration: {data['integration_index']:.2f}",
-                f"   - Components: Auth={data['authority_component']:.0f} | Cur={data['curation_component']:.0f} | Conv={data['conversation_component']:.0f} | Qual={data['quality_component']:.0f} | Net={data['network_component']:.0f} | Int={data['integration_component']:.0f}",
-                f""
-            ])
-        
-        # Add summary statistics
-        total_notes = len([n for n, d in gravity_scores.items() if d['exists']])
-        avg_efficiency = sum(d['bidirectional_efficiency'] for d in gravity_scores.values()) / len(gravity_scores) * 100
-        top_score = list(gravity_scores.values())[0]['total']
-        
-        # Category analysis
-        categories = defaultdict(list)
-        for note, data in list(gravity_scores.items())[:top_n]:
-            categories[data['category']].append(data['total'])
-        
-        report_lines.extend([
             f"---",
             f"",
             f"## Summary Statistics", 
